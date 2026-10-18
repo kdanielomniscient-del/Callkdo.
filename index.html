@@ -45,6 +45,16 @@
   .topbar .gift-mark{width:34px;height:34px;border-radius:10px;font-size:16px}
   .topbar h2{font-family:'Fraunces',serif;font-size:19px;margin:0}
   .topbar .status{font-size:11.5px;color:var(--amber);margin-top:1px}
+  .topbar .spacer{flex:1}
+  .topbar .icon-btn{background:none;border:none;color:var(--text);font-size:19px;padding:6px}
+  .settings-list{padding:8px 6px}
+  .settings-row{display:flex;align-items:center;gap:14px;padding:14px 10px;border-radius:12px;cursor:pointer}
+  .settings-row:active{background:var(--panel)}
+  .settings-row .ic{width:32px;text-align:center;font-size:18px}
+  .settings-row .lbl{font-size:15px}
+  .settings-row.danger .lbl{color:var(--call)}
+  .profile-big{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 20px}
+  .profile-big .avatar{width:84px;height:84px;font-size:30px}
   .list{overflow-y:auto;flex:1;padding:6px 10px}
   .convo{display:flex;align-items:center;gap:13px;padding:12px 10px;border-radius:14px;cursor:pointer}
   .convo:active{background:var(--panel)}
@@ -79,6 +89,10 @@
   .composer input[type=file]{display:none}
   .bubble img{max-width:100%;border-radius:12px;display:block}
   .bubble.img-bubble{padding:4px}
+  .bubble audio{max-width:200px;height:36px}
+  #mic-btn.recording{background:var(--call);color:#fff}
+  .tick{font-size:11px;color:var(--muted);margin-left:4px}
+  .bubble.me .tick{color:var(--amber)}
 
   .modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;
     justify-content:center;z-index:10;padding:24px}
@@ -115,9 +129,51 @@
         <h2>K.D.O CALL</h2>
         <div class="status" id="welcome-line">Bienvenue</div>
       </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" onclick="shareApp()">🔗</button>
+      <button class="icon-btn" onclick="show('screen-profile')">👤</button>
+      <button class="icon-btn" onclick="show('screen-settings')">⚙️</button>
     </div>
     <div class="list" id="convo-list"></div>
-    <button class="fab" onclick="openNewChatModal()">＋</button>
+    <button class="fab" onclick="openActionModal()">＋</button>
+  </div>
+
+  <div class="screen" id="screen-profile">
+    <div class="chat-top">
+      <button class="back" onclick="show('screen-list')">←</button>
+      <b>Mon profil</b>
+    </div>
+    <div class="profile-big">
+      <div class="avatar" id="profile-avatar"></div>
+      <div class="form-stack">
+        <div class="field"><label>Prénom</label><input id="pf-first"></div>
+        <div class="field"><label>Nom</label><input id="pf-last"></div>
+        <div class="field"><label>Numéro de téléphone</label><input id="pf-phone" disabled></div>
+        <p class="error" id="pf-error"></p>
+        <button class="btn btn-primary" onclick="saveProfile()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-settings">
+    <div class="chat-top">
+      <button class="back" onclick="show('screen-list')">←</button>
+      <b>Paramètres</b>
+    </div>
+    <div class="settings-list">
+      <div class="settings-row" onclick="show('screen-profile')">
+        <div class="ic">👤</div><div class="lbl">Profil</div>
+      </div>
+      <div class="settings-row">
+        <div class="ic">🔒</div><div class="lbl">Confidentialité — tes discussions ne sont visibles que par toi et ton correspondant</div>
+      </div>
+      <div class="settings-row">
+        <div class="ic">🔔</div><div class="lbl">Notifications (bientôt disponible)</div>
+      </div>
+      <div class="settings-row danger" onclick="logout()">
+        <div class="ic">🚪</div><div class="lbl">Se déconnecter</div>
+      </div>
+    </div>
   </div>
 
   <div class="screen" id="screen-chat">
@@ -130,8 +186,18 @@
     <div class="composer">
       <button class="attach" onclick="document.getElementById('photo-input').click()">📷</button>
       <input type="file" id="photo-input" accept="image/*" onchange="sendPhoto(event)">
+      <button class="attach" id="mic-btn" onclick="toggleRecording()">🎤</button>
       <input type="text" id="chat-input" placeholder="Écris un message…" onkeydown="if(event.key==='Enter')sendMsg()">
       <button onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modal-action">
+    <div class="modal">
+      <h3>Nouveau</h3>
+      <button class="btn btn-primary" onclick="closeAllModals();openNewChatModal()">💬 Nouvelle discussion</button>
+      <button class="btn btn-primary" onclick="closeAllModals();openNewGroupModal()">👥 Nouveau groupe</button>
+      <button class="btn btn-ghost" onclick="closeAllModals()">Annuler</button>
     </div>
   </div>
 
@@ -141,7 +207,20 @@
       <div class="field"><label>Numéro de téléphone de ton ami</label><input id="nc-phone" type="tel" placeholder="+228 ..."></div>
       <p class="error" id="nc-error"></p>
       <button class="btn btn-primary" onclick="startNewChat()">Commencer la discussion</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-ghost" onclick="closeAllModals()">Annuler</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modal-newgroup">
+    <div class="modal">
+      <h3>Nouveau groupe</h3>
+      <div class="field"><label>Nom du groupe</label><input id="ng-name" placeholder="Ex. Amis du Monde"></div>
+      <div class="field"><label>Numéros (un par ligne)</label>
+        <textarea id="ng-phones" rows="4" placeholder="+228...&#10;+228..." style="width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-family:inherit"></textarea>
+      </div>
+      <p class="error" id="ng-error"></p>
+      <button class="btn btn-primary" onclick="createGroup()">Créer le groupe</button>
+      <button class="btn btn-ghost" onclick="closeAllModals()">Annuler</button>
     </div>
   </div>
 
@@ -162,12 +241,14 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let me = JSON.parse(localStorage.getItem('kdo-user') || 'null');
-let currentRoom = null, currentPeer = null, unsub = null;
+let currentRoom = null, currentPeer = null, unsub = null, currentIsGroup = false, roomNames = null;
+let mediaRecorder = null, audioChunks = [], isRecording = false, recordTimeout = null;
 
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(id==='screen-list') loadConversations();
+  if(id==='screen-profile') openProfileScreen();
 }
 
 function cleanPhone(p){ return p.replace(/[^\d+]/g,''); }
@@ -191,12 +272,129 @@ async function doSignup(){
   show('screen-list');
 }
 
+function openActionModal(){ document.getElementById('modal-action').classList.add('show'); }
+function closeAllModals(){
+  document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('show'));
+}
 function openNewChatModal(){
   document.getElementById('nc-error').textContent = '';
   document.getElementById('nc-phone').value = '';
   document.getElementById('modal-newchat').classList.add('show');
 }
-function closeModal(){ document.getElementById('modal-newchat').classList.remove('show'); }
+function closeModal(){ closeAllModals(); }
+
+function openNewGroupModal(){
+  document.getElementById('ng-error').textContent = '';
+  document.getElementById('ng-name').value = '';
+  document.getElementById('ng-phones').value = '';
+  document.getElementById('modal-newgroup').classList.add('show');
+}
+
+async function createGroup(){
+  const name = document.getElementById('ng-name').value.trim();
+  const phonesRaw = document.getElementById('ng-phones').value.trim();
+  const err = document.getElementById('ng-error');
+  err.textContent = '';
+  if(!name || !phonesRaw){ err.textContent = "Donne un nom et au moins un numéro."; return; }
+  const phones = phonesRaw.split('\n').map(p=>cleanPhone(p)).filter(p=>p && p!==me.phone);
+  if(phones.length < 1){ err.textContent = "Ajoute au moins un numéro valide."; return; }
+  const members = [me.phone, ...phones];
+  const names = {[me.phone]: me.name};
+  for(const p of phones){
+    try{
+      const udoc = await db.collection('users').doc(p).get();
+      names[p] = udoc.exists ? udoc.data().name : p;
+    }catch(e){ names[p] = p; }
+  }
+  try{
+    const roomRef = await db.collection('rooms').add({
+      type: 'group', groupName: name, members, names,
+      lastMessage: 'Groupe créé 🎉', lastTime: new Date().toISOString()
+    });
+    closeAllModals();
+    openChat(null, name, roomRef.id, true);
+  }catch(e){ err.textContent = "Erreur : " + e.message; }
+}
+
+async function toggleRecording(){
+  const btn = document.getElementById('mic-btn');
+  if(!isRecording){
+    if(!currentRoom){ return; }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
+      mediaRecorder.onstop = async ()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(audioChunks, {type: mediaRecorder.mimeType || 'audio/webm'});
+        if(blob.size > 900000){ alert('Message vocal trop long (max ~1 minute). Réessaie plus court.'); return; }
+        const reader = new FileReader();
+        reader.onload = async function(e){
+          const dataUrl = e.target.result;
+          const roomRef = db.collection('rooms').doc(currentRoom);
+          const extra = currentIsGroup ? {} : {
+            members: [me.phone, currentPeer.phone],
+            names: { [me.phone]: me.name, [currentPeer.phone]: currentPeer.name }
+          };
+          await roomRef.set({ ...extra, lastMessage: '🎤 Message vocal', lastTime: new Date().toISOString() }, {merge:true});
+          await roomRef.collection('messages').add({
+            from: me.phone, type: 'audio', data: dataUrl, read:false, ts: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        };
+        reader.readAsDataURL(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      btn.textContent = '⏹️';
+      btn.classList.add('recording');
+      recordTimeout = setTimeout(()=>{ if(isRecording) toggleRecording(); }, 60000);
+    }catch(e){
+      alert("Impossible d'accéder au micro : " + e.message);
+    }
+  }else{
+    isRecording = false;
+    clearTimeout(recordTimeout);
+    mediaRecorder.stop();
+    btn.textContent = '🎤';
+    btn.classList.remove('recording');
+  }
+}
+
+function shareApp(){
+  const url = window.location.href.split('?')[0];
+  const text = `Rejoins-moi sur K.D.O CALL ! 🎁 ${url}`;
+  if(navigator.share){
+    navigator.share({title:'K.D.O CALL', text, url}).catch(()=>{});
+  }else{
+    navigator.clipboard.writeText(text).then(()=>alert('Lien copié ! Colle-le dans WhatsApp ou SMS pour inviter un ami.'));
+  }
+}
+
+function logout(){
+  localStorage.removeItem('kdo-user');
+  me = null;
+  show('screen-signup');
+}
+
+function openProfileScreen(){
+  document.getElementById('pf-first').value = me.first;
+  document.getElementById('pf-last').value = me.last;
+  document.getElementById('pf-phone').value = me.phone;
+  document.getElementById('profile-avatar').textContent = initials(me.name);
+}
+
+async function saveProfile(){
+  const first = document.getElementById('pf-first').value.trim();
+  const last = document.getElementById('pf-last').value.trim();
+  const err = document.getElementById('pf-error');
+  if(!first || !last){ err.textContent = "Remplis prénom et nom."; return; }
+  me.first = first; me.last = last; me.name = first + ' ' + last;
+  localStorage.setItem('kdo-user', JSON.stringify(me));
+  try{ await db.collection('users').doc(me.phone).set(me, {merge:true}); }catch(e){}
+  document.getElementById('welcome-line').textContent = `Connecté en tant que ${first}`;
+  show('screen-list');
+}
 
 async function startNewChat(){
   const phoneRaw = document.getElementById('nc-phone').value.trim();
@@ -219,109 +417,4 @@ async function loadConversations(){
   try{
     const snap = await db.collection('rooms').where('members','array-contains', me.phone).get();
     if(snap.empty){
-      el.innerHTML = `<div class="empty">Aucune discussion pour l'instant.<br>Appuie sur ＋ pour écrire à un ami.</div>`;
-      return;
-    }
-    const rows = [];
-    snap.forEach(doc=>{
-      const d = doc.data();
-      const peerPhone = d.members.find(p => p !== me.phone);
-      const peerName = (d.names && d.names[peerPhone]) || peerPhone;
-      rows.push({peerPhone, peerName, last: d.lastMessage || '', time: d.lastTime || ''});
-    });
-    el.innerHTML = rows.map(r => `
-      <div class="convo" onclick="openChat('${r.peerPhone}','${r.peerName.replace(/'/g,"")}')">
-        <div class="avatar">${initials(r.peerName)}</div>
-        <div class="meta">
-          <div class="top-row"><b>${r.peerName}</b></div>
-          <div class="preview">${r.last}</div>
-        </div>
-      </div>`).join('');
-  }catch(e){
-    el.innerHTML = `<div class="empty">Impossible de charger les discussions.<br>${e.message}</div>`;
-  }
-}
-
-function openChat(peerPhone, peerName){
-  currentPeer = {phone:peerPhone, name:peerName};
-  currentRoom = roomId(me.phone, peerPhone);
-  document.getElementById('chat-name').textContent = peerName;
-  document.getElementById('chat-avatar').textContent = initials(peerName);
-  show('screen-chat');
-
-  if(unsub) unsub();
-  const box = document.getElementById('chat-messages');
-  box.innerHTML = '<div class="empty">Chargement…</div>';
-  unsub = db.collection('rooms').doc(currentRoom).collection('messages')
-    .orderBy('ts','asc')
-    .onSnapshot(snap=>{
-      const msgs = [];
-      snap.forEach(d=> msgs.push(d.data()));
-      box.innerHTML = msgs.length ? msgs.map(m=>
-        m.type === 'image'
-          ? `<div class="bubble img-bubble ${m.from===me.phone?'me':'them'}"><img src="${m.data}"></div>`
-          : `<div class="bubble ${m.from===me.phone?'me':'them'}">${escapeHtml(m.text)}</div>`
-      ).join('') : '<div class="empty">Dis bonjour 👋</div>';
-      box.scrollTop = box.scrollHeight;
-    }, err=>{
-      box.innerHTML = `<div class="empty">Erreur de connexion : ${err.message}</div>`;
-    });
-}
-
-function escapeHtml(s){
-  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
-}
-
-async function sendMsg(){
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if(!text || !currentRoom) return;
-  input.value = '';
-  const roomRef = db.collection('rooms').doc(currentRoom);
-  await roomRef.set({
-    members: [me.phone, currentPeer.phone],
-    names: { [me.phone]: me.name, [currentPeer.phone]: currentPeer.name },
-    lastMessage: text,
-    lastTime: new Date().toISOString()
-  }, {merge:true});
-  await roomRef.collection('messages').add({
-    from: me.phone, text, ts: firebase.firestore.FieldValue.serverTimestamp()
-  });
-}
-
-function sendPhoto(event){
-  const file = event.target.files[0];
-  event.target.value = '';
-  if(!file || !currentRoom) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    const img = new Image();
-    img.onload = async function(){
-      const maxW = 800;
-      const scale = Math.min(1, maxW / img.width);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      const roomRef = db.collection('rooms').doc(currentRoom);
-      await roomRef.set({
-        members: [me.phone, currentPeer.phone],
-        names: { [me.phone]: me.name, [currentPeer.phone]: currentPeer.name },
-        lastMessage: '📷 Photo',
-        lastTime: new Date().toISOString()
-      }, {merge:true});
-      await roomRef.collection('messages').add({
-        from: me.phone, type: 'image', data: dataUrl, ts: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-if(me){ document.getElementById('welcome-line').textContent = `Connecté en tant que ${me.first}`; show('screen-list'); }
-</script>
-</body>
-</html>
+      e
